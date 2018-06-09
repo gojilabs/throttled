@@ -6,12 +6,12 @@ class Throttled::Countdown
     @timestamp = timestamp
   end
 
-  def discard_at(window)
+  def discard_after(window)
     @timestamp + window
   end
 
   def discard?(window)
-   Time.now > discard_at(window)
+   Time.now > discard_after(window)
   end
 
   def ==(countdown)

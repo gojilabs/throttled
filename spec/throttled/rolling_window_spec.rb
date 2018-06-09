@@ -94,4 +94,48 @@ RSpec.describe 'Throttled::RollingWindow' do
       expect(@rw.send(:counts)).to eql(0)
     end
   end
+
+  describe '#prune' do
+    before do
+      @timestamp1 = 8.minutes.ago
+      @timestamp2 = 7.minutes.ago
+      @timestamp3 = 5.minutes.ago
+      @count1 = 12
+      @count2 = 1
+      @count3 = 2
+      @rw = Throttled::RollingWindow.new(14, 6.minutes)
+      @rw.add(@count1, @timestamp1)
+      @rw.add(@count2, @timestamp2)
+      @rw.add(@count3, @timestamp3)
+    end
+
+    it 'should remove all expired countdowns from expiring_counts' do
+      @rw.send(:prune)
+      expect(@rw.expiring_counts).to eq([Throttled::Countdown.new(@count3, @timestamp3)])
+    end
+
+    it 'should not modify expiring_counts if expiring_counts is empty' do
+      @rw.instance_variable_set('@expiring_counts', [])
+      @rw.send(:prune)
+      expect(@rw.expiring_counts).to eq([])
+    end
+  end
+
+  describe '#in_violation?' do
+    before do
+      @rw = Throttled::RollingWindow.new(14, 6.minutes)
+      @rw.add(19, 10.minutes.ago)
+      @rw.add(23, 7.minutes.ago)
+      @rw.add(4, 4.minutes.ago)
+    end
+
+    it 'should return true when the rolling window maximum has been violated' do
+      @rw.add(@rw.maximum)
+      expect(@rw.in_violation?).to eql(true)
+    end
+
+    it 'should return false when the rolling window maximum has not been violated' do
+      expect(@rw.in_violation?).to eql(false)
+    end
+  end
 end
