@@ -10,6 +10,7 @@ class Throttled::RollingWindow
 
   def add(count, timestamp = Time.now)
     @expiring_counts.push(Throttled::Countdown.new(count, timestamp))
+    self
   end
 
   def in_violation?
@@ -29,5 +30,6 @@ class Throttled::RollingWindow
 
   def prune
     @expiring_counts.shift while @expiring_counts.first&.discard?(window)
+    self
   end
 end

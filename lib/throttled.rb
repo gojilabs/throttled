@@ -33,7 +33,7 @@ module Throttled
 
   class_methods do
     def bits_key(window)
-      Throttled::BITS_KEY_PREFIX + window
+      "#{Throttled::BITS_KEY_PREFIX}#{window}"
     end
 
     def set_rate_throttle(bits, window)
@@ -42,14 +42,6 @@ module Throttled
 
     def remove_rate_throttle(window)
       remove_request_throttle(bits_key(window))
-    end
-
-    def set_request_throttle(type, count, window)
-      set_throttle(type, count, window)
-    end
-
-    def remove_request_throttle(type)
-      remove_throttle(type)
     end
 
     def set_backoff_time(seconds)
@@ -77,5 +69,8 @@ module Throttled
       @@global_throttles ||= {}
       @@global_throttles.delete(type)
     end
+
+    alias :remove_request_throttle :remove_throttle
+    alias :set_request_throttle :set_throttle
   end
 end
