@@ -12,12 +12,16 @@ module Throttled
   BITS_KEY_PREFIX = '__bits_'
 
   included do
+    @@_throttled_backoff = nil
+    @@_throttled_backoff_started_at = nil
+    @@_throttleds = {}
+
     def throttle_violated?
-      self.class.backoff_time > 0 || @@global_throttles.any? { |_, throttle| throttle.in_violation? }
+      self.class.backoff_time > 0 || @@_throttleds.any? { |_, throttle| throttle.in_violation? }
     end
 
     def add_throttled_bits(bit_count, timestamp = Time.now)
-      @@global_throttles.each { |key, throttle| throttle.add(bit_count, timestamp) if key.starts_with?(Throttled::BITS_KEY_PREFIX) }
+      @@_throttleds.each { |key, throttle| throttle.add(bit_count, timestamp) if key.start_with?(Throttled::BITS_KEY_PREFIX) }
     end
 
     def add_throttled_request(type, weight = 1, timestamp = Time.now)
@@ -27,7 +31,7 @@ module Throttled
     private
 
     def add_throttled_quantity(type, count, timestamp = Time.now)
-      @@global_throttles[type]&.add(count, timestamp)
+      @@_throttleds[type]&.add(count, timestamp)
     end
   end
 
@@ -45,29 +49,29 @@ module Throttled
     end
 
     def set_backoff_time(seconds)
-      if seconds == 0
-        @@global_throttle_backoff = nil
-        @@global_throttle_backoff_started_at = nil
+      if seconds <= 0
+        @@_throttled_backoff = nil
+        @@_throttled_backoff_started_at = nil
       else
-        @@global_throttle_backoff = seconds
-        @@global_throttle_backoff_started_at ||= Time.now
+        @@_throttled_backoff = seconds
+        @@_throttled_backoff_started_at ||= Time.now
       end
     end
 
     def backoff_time
-      (Time.now - @@global_throttle_backoff - @@global_throttle_backoff_started_at if @@global_throttle_backoff).to_i
+      (Time.now - @@_throttled_backoff - @@_throttled_backoff_started_at if @@_throttled_backoff).to_i
     end
 
     def set_throttle(type, count, window)
-      @@global_throttles ||= {}
-      throttle = @@global_throttles[type]
+      @@_throttleds ||= {}
+      throttle = @@_throttleds[type]
       current_counts = throttle ? throttle.expiring_counts : []
-      @@global_throttles[type] = RollingWindow.new(count, window, current_counts)
+      @@_throttleds[type] = RollingWindow.new(count, window, current_counts)
     end
 
     def remove_throttle(type)
-      @@global_throttles ||= {}
-      @@global_throttles.delete(type)
+      @@_throttleds ||= {}
+      @@_throttleds.delete(type)
     end
 
     alias :remove_request_throttle :remove_throttle
